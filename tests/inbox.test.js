@@ -250,3 +250,16 @@ test('peering policy: open accepts everyone, selective is quieter but manual, cl
   assert.equal(ev('__o.inbox.pol'), 'open');
   assert.deepEqual(errors, []);
 });
+
+test('a sold-out wave size cannot be reached by upgrading a smaller wave on the route', () => {
+  const { ev, errors } = load();
+  setup(ev);
+  ev("ACT.buildPop({city:'ams'});S.pops.ams.rgen=3;S.cash=1e9");
+  const day = ev("(()=>{for(let d=90;d<20000;d++){S.day=d;if(soldOut('fra','ams',2,null)&&!soldOut('fra','ams',1,null))return d;}return -1;})()");
+  assert.ok(day > 0, 'it happens');
+  ev(`S.day=${day};S.links.push({id:'upw',a:'fra',b:'ams',kind:'wave',tier:1,km:400,sub:false,cable:null,mo:1,mult:1,trench:'upw',cut:0,day:0})`);
+  ev("ACT.upLink({id:'upw',tier:2})");
+  assert.equal(ev("S.links.find(l=>l.id==='upw').tier"), 1, 'still the old size');
+  assert.match(ev("document.getElementById('toasts').textContent"), /No 400G capacity on this route/);
+  assert.deepEqual(errors, []);
+});
